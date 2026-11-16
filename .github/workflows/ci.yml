@@ -81,15 +81,9 @@ jobs:
           INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
           MIN="${{ steps.esphome_min.outputs.version }}"
           echo "Installiert: $INSTALLED  |  min_version: $MIN"
-          python3 -c "
-          from packaging.version import Version
-          i = Version('$INSTALLED')
-          m = Version('$MIN')
-          if i < m:
-              print(f'❌ {i} < min_version {m}')
-              exit(1)
-          print(f'✅ {i} >= min_version {m}')
-          "
+          if [ "$(printf '%s\n' "$MIN" "$INSTALLED" | sort -V | head -n1)" != "$MIN" ]; then
+            echo "ESPHome $INSTALLED ist älter als $MIN"; exit 1
+          fi
 
       - name: 📝 secrets.yaml erzeugen (CI-Dummy)
         run: |
@@ -102,7 +96,7 @@ jobs:
           EOF
 
       - name: ✅ YAML validieren
-        run: esphome config embinotec-weatherstation.yaml
+        run: esphome config embinotec-esphome-tododisplay.yaml
 
    
   
@@ -118,7 +112,7 @@ jobs:
       - name: 📋 ESPHome min_version aus YAML lesen
         id: esphome_min
         run: |
-          MIN=$(grep 'min_version:' embinotec-weatherstation.yaml \
+          MIN=$(grep 'min_version:' embinotec-esphome-tododisplay.yaml \
             | head -1 \
             | sed 's/.*min_version:\s*//' \
             | tr -d '"'\''[:space:]')
@@ -150,7 +144,7 @@ jobs:
           path: |
             .esphome
             ~/.platformio
-          key: esphome-build-${{ runner.os }}-${{ hashFiles('embinotec-weatherstation.yaml') }}
+          key: esphome-build-${{ runner.os }}-${{ hashFiles('embinotec-esphome-tododisplay.yaml') }}
           restore-keys: esphome-build-${{ runner.os }}-
 
       - name: 📝 secrets.yaml erzeugen (CI-Dummy)
@@ -164,11 +158,11 @@ jobs:
           EOF
 
       - name: 🔨 Firmware kompilieren
-        run: esphome compile embinotec-weatherstation.yaml
+        run: esphome compile embinotec-esphome-tododisplay.yaml
 
       - name: 📦 Firmware als Artefakt speichern
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ github.sha }}
-          path: .esphome/build/embinotec-weatherstation/.pioenvs/*/firmware.bin
+          path: .esphome/build/embinotec-esphome-tododisplay/.pioenvs/*/firmware.bin
           retention-days: 30
