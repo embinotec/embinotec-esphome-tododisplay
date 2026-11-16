@@ -1,3 +1,11 @@
+## Double hash for comments
+## single has for uncommented code
+
+## Home Assistant Integration with three triggers:
+## - state change of the entity todo.kuhlschrank
+## - every 15 minutes
+## - on Home Assistant start
+
 - trigger:
     - trigger: state
       entity_id: todo.kuhlschrank
@@ -17,6 +25,8 @@
         {{ todo_result['todo.kuhlschrank']['items']
            | selectattr('status','eq','needs_action') | list | count }}
       attributes:
+      ## create a list of items with uid, summary, due date and description as sensor that could be used in Home Assistant to move
+      ## items to the eink display.
         list: >
           {%- set items = todo_result['todo.kuhlschrank']['items']
               | selectattr('status','eq','needs_action') | list -%}
