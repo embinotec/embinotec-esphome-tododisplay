@@ -1,0 +1,28 @@
+- trigger:
+    - trigger: state
+      entity_id: todo.kuhlschrank
+    - trigger: time_pattern
+      minutes: "/15"
+    - trigger: homeassistant
+      event: start
+  action:
+    - action: todo.get_items
+      target:
+        entity_id: todo.kuhlschrank
+      response_variable: todo_result
+  sensor:
+    - name: "Todo Display"
+      unique_id: todo_display
+      state: >
+        {{ todo_result['todo.kuhlschrank']['items']
+           | selectattr('status','eq','needs_action') | list | count }}
+      attributes:
+        list: >
+          {%- set items = todo_result['todo.kuhlschrank']['items']
+              | selectattr('status','eq','needs_action') | list -%}
+          {%- set ns = namespace(lines=[]) -%}
+          {%- for i in items -%}
+            {%- set _ = lines.append(i.uid ~ '|' ~ i.summary ~ '|' ~ (i.due | default('')) ~ '|' ~
+             (i.description | default('') | replace('\n',' ') | replace('|',' '))) -%}
+          {%- endfor -%}
+          {{ ns.lines | join('\n') }}
