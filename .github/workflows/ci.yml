@@ -76,11 +76,20 @@ jobs:
           fi
           pip install $TARGET
 
-      - name: 🔢 Versionscheck gegen min_version
+     # - name: 🔢 Versionscheck gegen min_version
+     #   run: |
+     #     INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
+     #     MIN="${{ steps.esphome_min.outputs.version }}"
+     #     echo "Installiert: $INSTALLED  |  min_version: $MIN"
+     #     if [ "$(printf '%s\n' "$MIN" "$INSTALLED" | sort -V | head -n1)" != "$MIN" ]; then
+     #       echo "ESPHome $INSTALLED ist älter als $MIN"; exit 1
+     #     fi
+
+      - name: 🔢 Check ESPHome version
         run: |
+          MIN="2026.8.0"
           INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
-          MIN="${{ steps.esphome_min.outputs.version }}"
-          echo "Installiert: $INSTALLED  |  min_version: $MIN"
+          echo "Installiert: $INSTALLED | min_version: $MIN"
           if [ "$(printf '%s\n' "$MIN" "$INSTALLED" | sort -V | head -n1)" != "$MIN" ]; then
             echo "ESPHome $INSTALLED ist älter als $MIN"; exit 1
           fi
