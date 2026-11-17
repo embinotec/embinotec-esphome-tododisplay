@@ -105,7 +105,7 @@ jobs:
           EOF
 
       - name: ✅ YAML validieren
-        run: esphome config tododisplay.yaml
+        run: esphome config esphome/tododisplay.yaml
 
    
   
@@ -121,7 +121,7 @@ jobs:
       - name: 📋 ESPHome min_version aus YAML lesen
         id: esphome_min
         run: |
-          MIN=$(grep 'min_version:' tododisplay.yaml \
+          MIN=$(grep 'min_version:' esphome/tododisplay.yaml \
             | head -1 \
             | sed 's/.*min_version:\s*//' \
             | tr -d '"'\''[:space:]')
@@ -153,7 +153,7 @@ jobs:
           path: |
             .esphome
             ~/.platformio
-          key: esphome-build-${{ runner.os }}-${{ hashFiles('tododisplay.yaml') }}
+          key: esphome-build-${{ runner.os }}-${{ hashFiles('esphome/tododisplay.yaml') }}
           restore-keys: esphome-build-${{ runner.os }}-
 
       - name: 📝 secrets.yaml erzeugen (CI-Dummy)
