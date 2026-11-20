@@ -313,7 +313,7 @@ media_player:
       speaker: media_resampling_speaker
     files:
       - id: test_sound
-        file: audio/test_tone.wav
+        file: audio/test_tone_ref-A4.wav
 
 ## ------- Microphone SETTINGS -------
 #microphone:
