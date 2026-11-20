@@ -313,7 +313,7 @@ media_player:
       speaker: media_resampling_speaker
     files:
       - id: test_sound
-        file: audio/test_tone_ref-A4.wav
+        file: audio/test_tone.wav
 
 ## ------- Microphone SETTINGS -------
 #microphone:
@@ -361,7 +361,32 @@ font:
   - file: "fonts/materialdesignicons-webfont.ttf"
     id: font_icons
     size: 32
-    glyphs: ["\U000F07DC"]   ## mdi:microsd
+    glyphs: 
+      - "\U000F07DC"   ## mdi:microsd
+      - "\U000F0079"   # battery (100 %)
+      - "\U000F007A"   # battery-10
+      - "\U000F007B"   # battery-20
+      - "\U000F007C"   # battery-30
+      - "\U000F007D"   # battery-40
+      - "\U000F007E"   # battery-50
+      - "\U000F007F"   # battery-60
+      - "\U000F0080"   # battery-70
+      - "\U000F0081"   # battery-80
+      - "\U000F0082"   # battery-90
+      - "\U000F0083"   # battery-alert (unter 5 %)
+      - "\U000F0085"   # battery-charging-100
+      - "\U000F089C"   # battery-charging-10
+      - "\U000F0086"   # battery-charging-20
+      - "\U000F0087"   # battery-charging-30
+      - "\U000F0088"   # battery-charging-40
+      - "\U000F089D"   # battery-charging-50
+      - "\U000F0089"   # battery-charging-60
+      - "\U000F089E"   # battery-charging-70
+      - "\U000F008A"   # battery-charging-80
+      - "\U000F008B"   # battery-charging-90
+      - "\U000F089F"   # battery-charging-outline (unter 5 %)
+      - "\U000F0091"   # battery-unknown (noch kein Messwert)
+      - "\U000F125D"   # battery-off (kein Akku erkannt)
   
   - file: "gfonts://Roboto"
     id: font_title
@@ -465,7 +490,7 @@ text_sensor:
 
 
 binary_sensor:
-  ## BOOT
+  ## BOOT - button
   - platform: gpio
     pin: GPIO0
     name: "User button"
@@ -583,6 +608,12 @@ binary_sensor:
       number: GPIO2
       inverted: true
 
+  - platform: template
+    name: "Akku angeschlossen"
+    lambda: |-
+      if (!id(battery_voltage).has_state()) return {};
+      return id(battery_voltage).state > 2.5;   // Wert prüfen, siehe unten
+      
   - platform: status
     name: "Wifi status"
 
@@ -601,18 +632,23 @@ axp2101:
   i2c_id: bus_a
     
 sensor:
-#  - platform: axp2101
-#    model: M5CORE2
-#    address: 0x34
-#    i2c_id: bus_a
-#    update_interval: 30s
-#    brightness: 75%
-#    battery_voltage:
-#      name: "Battery Voltage"
-#    battery_level:
-#      name: "Battery Level"
-#    battery_charging:
-#      name: "Battery Charging"
+  - platform: axp2101
+    #model: M5CORE2
+    axp2101_id: axp2101_pmu
+    id: battery
+   # address: 0x34
+   # i2c_id: bus_a
+    update_interval: 30s
+   # brightness: 75%
+    battery_voltage:
+      id: battery_voltage
+      name: "Battery Voltage"
+    battery_level:
+      id: battery_level
+      name: "Battery Level"
+    battery_charging:
+      id: battery_charging
+      name: "Battery Charging"
     
 #  - platform: motion
 #    type: acceleration_x
@@ -810,6 +846,44 @@ display:
       it.line(sd_x,      sd_y + 24, sd_x + 24, sd_y,      BLACK);
       }
       */
+
+      // -----------------------------
+      // Batterie-Anzeige (links neben dem SD-Icon)
+      // -----------------------------
+      {
+        float bv = id(battery_voltage).state;
+        if (bv > 100.0f) bv /= 1000.0f;            // falls die Komponente mV liefert
+        float bl = id(battery_level).state;
+        bool charging = id(battery_charging).state;
+      
+        const char *bat_icon;
+        bool show_pct = false;
+      
+        if (std::isnan(bv)) {
+          bat_icon = "\U000F0091";                 // noch kein Messwert
+        } else if (bv < 2.5f) {
+          bat_icon = "\U000F125D";                 // kein Akku erkannt
+        } else {
+          static const char *const bat_normal[11] = {
+            "\U000F0083", "\U000F007A", "\U000F007B", "\U000F007C", "\U000F007D", "\U000F007E",
+            "\U000F007F", "\U000F0080", "\U000F0081", "\U000F0082", "\U000F0079"};
+          static const char *const bat_charge[11] = {
+            "\U000F089F", "\U000F089C", "\U000F0086", "\U000F0087", "\U000F0088", "\U000F089D",
+            "\U000F0089", "\U000F089E", "\U000F008A", "\U000F008B", "\U000F0085"};
+          int idx = std::isnan(bl) ? 0 : (int) ((bl + 5.0f) / 10.0f);   // 0..10
+          if (idx < 0) idx = 0;
+          if (idx > 10) idx = 10;
+          bat_icon = charging ? bat_charge[idx] : bat_normal[idx];
+          show_pct = !std::isnan(bl);
+        }
+      
+        int bat_x = sd_x - 40;
+        it.print(bat_x, 5, id(font_icons), BLACK, bat_icon);
+        if (show_pct) {
+          it.printf(bat_x - 4, 10, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "%.0f%%", bl);
+        }
+      }
+      
       // -----------------------------
       // Tabellen-Überschrift
       // -----------------------------
