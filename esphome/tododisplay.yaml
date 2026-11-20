@@ -15,38 +15,39 @@
 ##             GND  | 1               41| GND (Thermal Pad)
 ##             3V3  | 2                 |
 ##              EN  | 3               40| GND
-##             IO4  | 4               39| IO1
-##             IO5  | 5               38| IO2
-##             IO6  | 6               37| IO43/TXD
-##             IO7  | 7               36| IO44/RXD
-##            IO15  | 8               35| IO42
-##            IO16  | 9               34| IO41
-##            IO17  | 10              33| IO40
-##            IO18  | 11              32| IO39
-##             IO8  | 12              31| IO38
+##   JOG-UP    IO4  | 4               39| IO1
+##   JOG-PUSH  IO5  | 5               38| IO2
+##   JOG-DOWN  IO6  | 6               37| IO43/TXD   STATUS_LED
+##   SD_DATA1  IO7  | 7               36| IO44/RXD
+##   SD_DATA0 IO15  | 8               35| IO42  I2C_SCL
+##   SD_CLK   IO16  | 9               34| IO41  I2C_SDA
+##   SD_CMD   IO17  | 10              33| IO40
+##   SD_DATA3 IO18  | 11              32| IO39  AMP_PWR
+##   SD_DATA2  IO8  | 12              31| IO38
 ##    (USB D-) IO19 | 13              30| IO37  (SPI-FLASH)
 ##    (USB D+) IO20 | 14              29| IO36  (SPI-FLASH)
-##            IO3   | 15              28| IO35  (SPI-FLASH)
+## DISPL_BUSY IO3   | 15              28| IO35  (SPI-FLASH)
 ##            IO46  | 16              27| IO0
-##            IO9   | 17              26| IO45
-##            IO10  | 18              25| IO48
-##            IO11  | 19              24| IO47
-##            IO12  | 20              23| IO21
-##            IO13   | 21             22| IO14
-##                  +-----------------+              
+## DISPL_DC   IO9   | 17              26| IO45
+## DISPL_CS   IO10  | 18              25| IO48
+##    SPI_CLK IO11  | 19              24| IO47  I2S_CLK
+##   SPI_DATA IO12  | 20              23| IO21  I2S_DOUT
+##  I2S_BCLK IO13   | 21              22| IO14  I2S_MCLK
+##                  +-------------------+              
 
+## ------ SUBSTITUTIONS -------
 substitutions:
   todo_entity: "todo.kuhlschrank"
   ha_sensor_entity: "sensor.todo_display"
   display_title: "Kühlschrank"
+  firmware_version: "v0.9.1"
 
+## ------ ESPHome HEADER -------
 esphome:
   name: fridgedisplay
   friendly_name: Kühlschrankdisplay
   comment: "3.97 E-ink display zum Anzeigen des Kühlschrankinhalts."
   min_version: 2026.8.0
-    # Automatically add the mac address to the name
-  # so you can use a single firmware for all devices
   name_add_mac_suffix: false
   
   on_boot:
@@ -69,7 +70,9 @@ esphome:
             if (id(display_sd).is_failed()) {
               ESP_LOGW("main", "Keine SD-Karte erkannt oder Mount fehlgeschlagen");
             }
-        
+
+## ------ ESP32 configuration ------
+## Please be aware of changing one of these configuration options could cause in uncompilable code.
 esp32:
   board: esp32-s3-devkitc1-n16r8   # ggf. auf dein konkretes Board anpassen
   variant: esp32s3
@@ -181,13 +184,6 @@ ota:
 ## ------ WEB SERIAL --------
 ## Improve serial is a standard to connect by webserial and cable
 #improv_serial:
-  ## device_name: This will substitute the device name including the mac address suffix.
-  ## ip_address: This will substitute the IP address of the device.
-  ## esphome_version: This will substitute the version of ESPHome that is running on the device.
-  ## A URL that can be used to forward the user to after setting credentials with improv.
-#  next_url: https://example.com/project-template/manual?ip={{ip_address}}&name={{device_name}}&version={{esphome_version}} 
-#  next_url: http://{{device.name}}.local
-#  uart_id: uart_improv
 
 ## SUB:------ ESP32 Improve ------
 ## solid: The improv service is active and waiting to be authorized.
@@ -198,32 +194,31 @@ ota:
 #esp32_improv:
 #  authorizer: user_button
 
-
 ## ------- POWER MANGEMENT -------
 ## ESP32 should be powered by three times 2800mAh rechargable AA batteries.
 ## To save some power the ESP should not always be connected to your wifi and have some rest
 ## to cover the hole day with measurements.
 deep_sleep:
   id: during_day
-  run_duration: 5min
+  run_duration: 2min
   sleep_duration: 13min
   esp32_ext1_wakeup: 
     mode: ANY_LOW
     pins: 
         - pin: 
-            number: GPIO4 ## up
+            number: GPIO4 ## JOG-UP
          #   allow_other_uses: true
           on_wake:
             then:
               - logger.log: "awake"
         - pin: 
-            number: GPIO5
+            number: GPIO5   ## JOG-PUSH
           #  allow_other_uses: true
           on_wake:
             then:
               - logger.log: "awake"
         - pin: 
-            number: GPIO6
+            number: GPIO6  ## JOG-DOWN
           #  allow_other_uses: true
           on_wake:
             then:
@@ -284,6 +279,7 @@ i2s_audio:
   #- id: i2s_in  ## PDM microphone: clock=GPIO5
     #i2s_lrclk_pin: GPIO5
 
+## -------- AUDIO -------------
 speaker:
   # Raw I2S output to the DAC
   - platform: i2s_audio
@@ -307,8 +303,6 @@ speaker:
     id: announcement_resampling_speaker
     output_speaker: announcement_mixing_input
 
-    
-    
 media_player:
   - platform: speaker
     name: "Player"
@@ -319,7 +313,7 @@ media_player:
       speaker: media_resampling_speaker
     files:
       - id: test_sound
-        file: audio/test_tone_ref-A4.wav
+        file: audio/test_tone.wav
 
 ## ------- Microphone SETTINGS -------
 #microphone:
@@ -336,7 +330,8 @@ media_player:
 #      - logger.log:
 #          format: "Mic-Daten: %d Samples"
 #          args: ['x.size()']
-  
+
+## ------- TIME -------
 time:
   - platform: homeassistant
     id: ha_time
@@ -376,6 +371,7 @@ font:
       - "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       - "abcdefghijklmnopqrstuvwxyz"
       - "ÄÖÜäöüß"
+      - "°"
       #- "√"
   
   - file: "gfonts://Roboto"
@@ -515,7 +511,8 @@ binary_sensor:
               int cnt = (int) id(item_uids).size();
               if (cnt > 0 && id(selected_index) < cnt) {
                 id(pending_uid) = id(item_uids)[id(selected_index)];
-                id(confirmation_text) = id(item_summaries)[id(selected_index)] + "\n" + "entnommen";
+                id(confirmation_text) = id(item_summaries)[id(selected_index)];
+                //id(confirmation_text) = id(item_summaries)[id(selected_index)] + "\n" + "entnommen";
                // id(confirmation_text) = "\\u221A" + " " + id(item_summaries)[id(selected_index)] + " " + "entnommen.";
               } else {
                 id(pending_uid) = "";
@@ -535,6 +532,7 @@ binary_sensor:
                 - delay: 3s
                 - lambda: 'id(confirmation_active) = false;'
                 - component.update: eink_display
+## alternative function
 #        then:
 #          - lambda: |-
 #              int cnt = (int) id(item_uids).size();
@@ -626,11 +624,12 @@ sensor:
 #    type: roll
 #    name: "QMI8658 Roll"
 
-#  - platform: shtcx
-#    temperature:
-#      name: "Temperature"
-#    humidity:
-#      name: "Humidity"
+  - platform: shtcx
+    temperature:
+      id: ambient_temp
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
 
   ## SUB: ----- WIFI SIGNAL STRENGTH ------
   - platform: wifi_signal
@@ -732,15 +731,19 @@ display:
        if (id(confirmation_active)) {
          it.fill(WHITE);
          int cx = 40, cy = it.get_height() / 2;
+
+         int fw = 0, fx = 0, fb = 0, fh = 0;
+         id(font_title)->measure("Test", &fw, &fx, &fb, &fh);   // Zeilenhöhe der Schrift
+         
          // Haken aus zwei Linien: kurzer Strich runter-rechts, langer Strich rauf-rechts
          it.line(cx,      cy + 10, cx + 12, cy + 22, BLACK);
          it.line(cx + 12, cy + 22, cx + 34, cy - 14, BLACK);
-         it.print(cx + 50, cy - 12, id(font_title), BLACK, id(confirmation_text).c_str());
+         
+         // Zwei Zeilen untereinander, vertikal um cy zentriert
+         it.print(cx + 50, cy - fh, id(font_title), BLACK, id(confirmation_text).c_str());
+         it.print(cx + 50, cy,      id(font_title), BLACK, "entnommen");
+         
          return;
-         //
-         //it.print(20, it.get_height() / 2 - 20, id(font_title), BLACK,
-         //     id(confirmation_text).c_str());
-         //return;   // Rest des Lambdas (Header, Liste) überspringen
        }
       
       // -----------------------------
@@ -832,33 +835,33 @@ display:
       id(font_desc)->measure("Test", &desc_font_width, &desc_font_x_offset, &desc_font_baseline, &desc_font_height);
 
       
-       // -----------------------------
-       // Nach Fälligkeitsdatum sortieren, älteste zuerst
-       // (Items ohne Datum ans Ende) — einfacher Insertion-Sort,
-       // stabil, keine zusätzlichen Includes nötig
-       // -----------------------------
-       {
-         int cnt2 = (int) id(item_uids).size();
-         for (int i = 1; i < cnt2; i++) {
-           std::string key_uid = id(item_uids)[i];
-           std::string key_sum = id(item_summaries)[i];
-           std::string key_due = id(item_dues)[i];
-           std::string key_sort = key_due.empty() ? "9999-99-99" : key_due;
+      // -----------------------------
+      // Nach Fälligkeitsdatum sortieren, älteste zuerst
+      // (Items ohne Datum ans Ende) — einfacher Insertion-Sort,
+      // stabil, keine zusätzlichen Includes nötig
+      // -----------------------------
+      {
+        int cnt2 = (int) id(item_uids).size();
+        for (int i = 1; i < cnt2; i++) {
+          std::string key_uid = id(item_uids)[i];
+          std::string key_sum = id(item_summaries)[i];
+          std::string key_due = id(item_dues)[i];
+          std::string key_sort = key_due.empty() ? "9999-99-99" : key_due;
     
-           int j = i - 1;
-           while (j >= 0) {
-             std::string cur_due = id(item_dues)[j].empty() ? "9999-99-99" : id(item_dues)[j];
-             if (cur_due <= key_sort) break;
-             id(item_uids)[j + 1]      = id(item_uids)[j];
-             id(item_summaries)[j + 1] = id(item_summaries)[j];
-             id(item_dues)[j + 1]      = id(item_dues)[j];
-             j--;
-           }
-           id(item_uids)[j + 1]      = key_uid;
-           id(item_summaries)[j + 1] = key_sum;
-           id(item_dues)[j + 1]      = key_due;
-         }
-       }
+          int j = i - 1;
+          while (j >= 0) {
+            std::string cur_due = id(item_dues)[j].empty() ? "9999-99-99" : id(item_dues)[j];
+            if (cur_due <= key_sort) break;
+            id(item_uids)[j + 1]      = id(item_uids)[j];
+            id(item_summaries)[j + 1] = id(item_summaries)[j];
+            id(item_dues)[j + 1]      = id(item_dues)[j];
+            j--;
+          }
+          id(item_uids)[j + 1]      = key_uid;
+          id(item_summaries)[j + 1] = key_sum;
+          id(item_dues)[j + 1]      = key_due;
+        }
+      }
       
       int cnt = (int) id(item_summaries).size();
  
@@ -866,10 +869,10 @@ display:
         it.print(0, y, id(font_item), BLACK, "Keine Reste");
       }
  
-      for (int i = 0; i < cnt; i++) {
-        bool selected = (i == id(selected_index));
+      for (int index = 0; index < cnt; index++) {
+        bool selected = (index == id(selected_index));
       
-        std::string desc = id(item_descriptions)[i];
+        std::string desc = id(item_descriptions)[index];
         bool has_desc = !desc.empty();
         if (desc.length() > 35) {
           desc = desc.substr(0, 32) + "...";   // max. 35 Zeichen inkl. "..."
@@ -879,12 +882,12 @@ display:
       
         if (selected) {
           it.filled_rectangle(0, y - 2, it.get_width(), row_height, BLACK);
-          it.print(4, y, id(font_item), WHITE, id(item_summaries)[i].c_str());
+          it.print(4, y, id(font_item), WHITE, id(item_summaries)[index].c_str());
         } else {
-          it.print(4, y, id(font_item), BLACK, id(item_summaries)[i].c_str());
+          it.print(4, y, id(font_item), BLACK, id(item_summaries)[index].c_str());
         }
       
-        std::string due = id(item_dues)[i];
+        std::string due = id(item_dues)[index];
         if (due.length() >= 10) {
           std::string date = due.substr(8, 2) + "." + due.substr(5, 2) + ".";
           it.print(it.get_width() - 60, y, id(font_item), selected ? WHITE : BLACK, date.c_str());
@@ -895,6 +898,21 @@ display:
         }
       
         y += row_height;
+      }
+
+      // -----------------------------
+      // Footer: Trennlinie, links Firmware-Version, rechts Temperatur
+      // -----------------------------
+      int footer_y = it.get_height() - desc_font_height - 10;   // desc_font_height ist weiter oben schon gemessen
+      it.line(3, footer_y, it.get_width(), footer_y, BLACK);
+      
+      it.print(4, footer_y + 4, id(font_desc), BLACK, "${firmware_version}");
+      
+      float temperature = id(ambient_temp).state;
+      if (std::isnan(temperature)) {
+        it.print(it.get_width() - 4, footer_y + 4, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "--,- °C");
+      } else {
+        it.printf(it.get_width() - 4, footer_y + 4, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "%.1f °C", temperature);
       }
 
   
@@ -909,10 +927,11 @@ sd_mmc_card:
   data2_pin: GPIO8   # SD_D2
   data3_pin: GPIO18  # SD_CS
 
-sd_file_server:
-  id: file_server
-  url_prefix: file
-  root_path: "/"
-  enable_deletion: true
-  enable_download: true
-  enable_upload: true
+#sd_file_server:
+#  id: file_server
+#  url_prefix: file
+#  root_path: "/"
+#  enable_deletion: true
+#  enable_download: true
+#  enable_upload: true
+      
