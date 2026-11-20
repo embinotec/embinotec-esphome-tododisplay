@@ -25,14 +25,12 @@
         {{ todo_result['todo.kuhlschrank']['items']
            | selectattr('status','eq','needs_action') | list | count }}
       attributes:
-      ## create a list of items with uid, summary, due date and description as sensor that could be used in Home Assistant to move
-      ## items to the eink display.
         list: >
           {%- set items = todo_result['todo.kuhlschrank']['items']
               | selectattr('status','eq','needs_action') | list -%}
           {%- set ns = namespace(lines=[]) -%}
-          {%- for i in items -%}
-            {%- set _ = lines.append(i.uid ~ '|' ~ i.summary ~ '|' ~ (i.due | default('')) ~ '|' ~
-             (i.description | default('') | replace('\n',' ') | replace('|',' '))) -%}
+          {%- for item in items -%}
+            {%- set ns.lines = ns.lines + [item.uid ~ '|' ~ item.summary ~ '|' ~ (item.due | default('')) ~ '|' ~
+             (item.description | default('') | replace('\n',' ') | replace('|',' '))] -%}
           {%- endfor -%}
           {{ ns.lines | join('\n') }}
