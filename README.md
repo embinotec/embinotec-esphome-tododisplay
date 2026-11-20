@@ -13,7 +13,7 @@ Eink Display zur Anzeige von ToDo-Listen aus HomeAssistant.
 ## Hardware
 
 **Hardware could be purchased at [embinotec.de](https://www.embinotec.de/produktseite/todo-display).**  
-![TodoDisplay](./assets/IMG_6237.jpeg "Display on fridge")
+![TodoDisplay](./assets/todo_display.jpeg "Display on fridge")
 
 ## Install esphome device
 
