@@ -30,11 +30,11 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           towncrier build --draft --version "$VERSION" \
-            --config towncrier.toml > release_notes.md
-          cat release_notes.md
+            --config towncrier.toml > CHANGELOG.md
+          cat CHANGELOG.md
 
       - name: Release-Notes ins GitHub-Release schreiben
-        run: gh release edit "$TAG" --notes-file release_notes.md
+        run: gh release edit "$TAG" --notes-file CHANGELOG.md
 
       - name: CHANGELOG schreiben und Fragmente entfernen
         run: |
