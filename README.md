@@ -54,6 +54,8 @@ Display will be deliverted preconfigured. Scan your wifi area for a device calle
 - Copy the {project}\HomeAssistant\template_todo.yaml into templates folder
 - Do a full restart your HomeAssistant instance.
 
+- ATTENTION: Make sure that esphome device is able to be able to change the list. 
+
 ## Usage
 
 ### Wake up the device
