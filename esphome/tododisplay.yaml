@@ -37,15 +37,21 @@
 
 ## ------ SUBSTITUTIONS -------
 substitutions:
+  device_name: kuehlschrankdisplay
+  friendly: "Kühlschrank Inhalt"
   todo_entity: "todo.kuhlschrank"
   ha_sensor_entity: "sensor.todo_display"
   display_title: "Kühlschrank"
+  col_left: "Inhalt"
+  col_right: "Seit"
+  empty_text: "Leer"
   firmware_version: "v0.9.1"
+
 
 ## ------ ESPHome HEADER -------
 esphome:
-  name: fridgedisplay
-  friendly_name: Kühlschrankdisplay
+  name: ${device_name}
+  friendly_name: ${friendly}
   comment: "3.97 E-ink display zum Anzeigen des Kühlschrankinhalts."
   min_version: 2026.8.0
   name_add_mac_suffix: false
@@ -143,7 +149,7 @@ wifi:
   id: wifi_comp
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  use_address: kuehlschrank.local ## when 
+  use_address: ${device_name}.local ## when 
   #power_save_mode: NONE
   fast_connect: true ## Optional: speeds up connection
 
@@ -156,7 +162,7 @@ wifi:
 ## Enable fallback hotspot (captive portal) in case wifi connection fails
 ## SECTION: CAPTIVE PORTAL must be active
   ap:
-    ssid: "Kuehlschrank Fallback Hotspot"
+    ssid: "tododisplay Hotspot"
     password: "embinotec"
 
 ## ------ WEB SERVER SETTINGS -------
@@ -914,8 +920,8 @@ display:
       // -----------------------------
       // Tabellen-Überschrift (HEADER)
       // -----------------------------
-      it.print(4, 44, id(date), BLACK, "Essen");
-      it.print(it.get_width() - 60, 44, id(date), BLACK, "Seit");
+      it.print(4, 44, id(date), BLACK, "${col_left}");
+      it.print(it.get_width() - 60, 44, id(date), BLACK, "${col_right}");
       it.line(3, 68, it.get_width(), 68, BLACK);
 
       // -----------------------------
@@ -963,7 +969,7 @@ display:
       int last_visible = first_visible - 1;
 
       if (entry_count == 0) {
-        it.print(0, list_top, id(font_item), BLACK, "Keine Reste");
+        it.print(0, list_top, id(font_item), BLACK, "${empty_text}");
       }
 
       for (int entry_index = first_visible; entry_index < entry_count; entry_index++) {
@@ -1044,4 +1050,3 @@ sd_mmc_card:
 #  enable_deletion: true
 #  enable_download: true
 #  enable_upload: true
-      
