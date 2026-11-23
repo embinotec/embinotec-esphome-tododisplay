@@ -1,0 +1,15 @@
+## todo_gefrierschrank.yaml
+## ATTENTION: Make sure that ha_sensor_entity matches frindly name in HomeAssistant/template_todo.yaml == sensor.name
+
+substitutions:
+  device_name: gefrierschrank
+  friendly: "Gefrierschrankdisplay"
+  todo_entity: "todo.gefrierschrank"
+  ha_sensor_entity: "sensor.todo_gefrierschrank"
+  display_title: "Gefrierschrank"
+  col_left: "Inhalt"
+  col_right: "Seit"
+  empty_text: "Leer"
+
+packages:
+  common: !include tododisplay.yaml

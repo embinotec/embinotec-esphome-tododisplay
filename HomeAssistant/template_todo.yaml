@@ -8,7 +8,10 @@
 
 - trigger:
     - trigger: state
-      entity_id: todo.kuhlschrank
+      entity_id: 
+        - todo.kuhlschrank
+        ## for multiple devices, add them here, e.g.:
+        - todo.gefrierschrank
     - trigger: time_pattern
       minutes: "/15"
     - trigger: homeassistant
@@ -16,17 +19,37 @@
   action:
     - action: todo.get_items
       target:
-        entity_id: todo.kuhlschrank
+        entity_id: 
+          - todo.kuhlschrank
+          ## for multiple devices, add them here, e.g.:
+          - todo.gefrierschrank
       response_variable: todo_result
   sensor:
-    - name: "Todo Display"
-      unique_id: todo_display
+    - name: "Todo Kuehlschrank"
+      unique_id: todo_kuehlschrank
       state: >
         {{ todo_result['todo.kuhlschrank']['items']
            | selectattr('status','eq','needs_action') | list | count }}
       attributes:
         list: >
           {%- set items = todo_result['todo.kuhlschrank']['items']
+              | selectattr('status','eq','needs_action') | list -%}
+          {%- set ns = namespace(lines=[]) -%}
+          {%- for item in items -%}
+            {%- set ns.lines = ns.lines + [item.uid ~ '|' ~ item.summary ~ '|' ~ (item.due | default('')) ~ '|' ~
+             (item.description | default('') | replace('\n',' ') | replace('|',' '))] -%}
+          {%- endfor -%}
+          {{ ns.lines | join('\n') }}
+    ## ----------------------
+    ## for multiple devices, add them here, e.g.:
+    - name: "Todo Gefrierschrank"
+      unique_id: todo_gefrierschrank
+      state: >
+        {{ todo_result['todo.gefrierschrank']['items']
+           | selectattr('status','eq','needs_action') | list | count }}
+      attributes:
+        list: >
+          {%- set items = todo_result['todo.gefrierschrank']['items']
               | selectattr('status','eq','needs_action') | list -%}
           {%- set ns = namespace(lines=[]) -%}
           {%- for item in items -%}
