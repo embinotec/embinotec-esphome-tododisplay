@@ -4,7 +4,10 @@ All notable changes to this project/product will be documented in this file.
 
 ## unrelased/future work
 
--
+- Item List overflow
+- Multi todo list usage
+- Audio input to add items to the list
+- Multi language
 
 <!-- towncrier release notes start -->
 

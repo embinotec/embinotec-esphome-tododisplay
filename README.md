@@ -13,9 +13,23 @@ Eink Display zur Anzeige von ToDo-Listen aus HomeAssistant.
 ## Hardware
 
 **Hardware could be purchased at [embinotec.de](https://www.embinotec.de/produktseite/todo-display).**  
-![TodoDisplay](./assets/todo_display.jpeg "Display on fridge")
+<!-- ![TodoDisplay](./assets/todo_display.jpeg "Display on fridge") -->
 
-## Install esphome device
+### Overview
+
+![CallOuts](./assets/todo_display-callouts.png "Overview")
+
+- [A] Display
+- [B] Jog dial | up, down, push
+- [C] Microphone / Status LED
+- [D] USB-C connector
+- [E] SD-Card slot
+- [F] User button
+- [G] Power button
+
+## Install 
+
+###esphome device
 
 Besides the preconfigure device setup in section `Fallback wifi` you have two possibilities to setup your device in your own esphome instance.
 
@@ -27,11 +41,7 @@ Besides the preconfigure device setup in section `Fallback wifi` you have two po
 
 Display will be deliverted preconfigured. Scan your wifi area for a device called todo_display. Connect to the wifi with password `embinotec`. Set your wifi credentials in the captive portal.
 
-## Install in HomeAssistant
-
-
-
-### Setting up the template
+### Setting up the template in HomeAssistant
 
 - Add folder `templates` in homeAssistant/config 
 ``` bash 
@@ -43,3 +53,12 @@ Display will be deliverted preconfigured. Scan your wifi area for a device calle
   ```
 - Copy the {project}\HomeAssistant\template_todo.yaml into templates folder
 - Do a full restart your HomeAssistant instance.
+
+## Usage
+
+The usual flow:  
+1. Place the box in fridge.
+2. Enter item and description in HomeAssistant todo list.
+3. When box is removed from fridge, use jog dial [B] to navigate to item index of the box.
+4. Press and hold jog dial [B] for minimum 3 seconds.
+5. Popup screen confirms the remove of the index in list.
