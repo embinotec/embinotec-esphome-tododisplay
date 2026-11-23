@@ -55,10 +55,10 @@ esphome:
       then:
         - lambda: |-
             const gpio_num_t jog_pins[3] = {GPIO_NUM_4, GPIO_NUM_5, GPIO_NUM_6};
-            for (auto p : jog_pins) {
-              gpio_reset_pin(p);
-              gpio_set_direction(p, GPIO_MODE_INPUT);
-              gpio_set_pull_mode(p, GPIO_PULLUP_ONLY);
+            for (auto jog_pin_number  : jog_pins) {
+              gpio_reset_pin(jog_pin_number );
+              gpio_set_direction(jog_pin_number , GPIO_MODE_INPUT);
+              gpio_set_pull_mode(jog_pin_number , GPIO_PULLUP_ONLY);
             }
     - priority: -10
       then:
@@ -446,44 +446,78 @@ text_sensor:
             id(item_dues).clear();
             id(item_descriptions).clear();
  
-            std::string data = id(ha_todo_list).state;
-            size_t start = 0;
-            while (start < data.size()) {
-              size_t pos = data.find('\n', start);
-              std::string line = (pos == std::string::npos)
-                                    ? data.substr(start)
-                                    : data.substr(start, pos - start);
+                // --- Rohdaten zeilenweise zerlegen: uid|summary|due|description ---
+            std::string raw_data = id(ha_todo_list).state;
+            size_t line_start = 0;
+            while (line_start < raw_data.size()) {
+              size_t line_end = raw_data.find('\n', line_start);
+              std::string line = (line_end == std::string::npos)
+                                    ? raw_data.substr(line_start)
+                                    : raw_data.substr(line_start, line_end - line_start);
               if (!line.empty()) {
-                size_t p1 = line.find('|');
-                size_t p2 = (p1 == std::string::npos) ? std::string::npos : line.find('|', p1 + 1);
-                size_t p3 = (p2 == std::string::npos) ? std::string::npos : line.find('|', p2 + 1);
-                /*
-                std::string uid     = (p1 != std::string::npos) ? line.substr(0, p1) : "";
-                std::string summary = (p1 != std::string::npos)
-                    ? ((p2 != std::string::npos) ? line.substr(p1 + 1, p2 - p1 - 1) : line.substr(p1 + 1))
+                size_t first_separator  = line.find('|');
+                size_t second_separator = (first_separator == std::string::npos)
+                                              ? std::string::npos : line.find('|', first_separator + 1);
+                size_t third_separator  = (second_separator == std::string::npos)
+                                              ? std::string::npos : line.find('|', second_separator + 1);
+
+                std::string entry_uid = (first_separator != std::string::npos) ? line.substr(0, first_separator) : "";
+                std::string entry_summary = (first_separator != std::string::npos)
+                    ? ((second_separator != std::string::npos)
+                          ? line.substr(first_separator + 1, second_separator - first_separator - 1)
+                          : line.substr(first_separator + 1))
                     : line;
-                std::string due     = (p2 != std::string::npos) ? line.substr(p2 + 1) : "";
-                 */
-                std::string uid     = (p1 != std::string::npos) ? line.substr(0, p1) : "";
-                std::string summary = (p1 != std::string::npos) ? ((p2 != std::string::npos) ? line.substr(p1 + 1, p2 - p1 - 1) : line.substr(p1 + 1)) : line;
-                std::string due         = (p2 != std::string::npos) ? ((p3 != std::string::npos) ? line.substr(p2 + 1, p3 - p2 - 1) : line.substr(p2 + 1)): "";
-                std::string description = (p3 != std::string::npos) ? line.substr(p3 + 1) : "";
-                
-                id(item_uids).push_back(uid);
-                id(item_summaries).push_back(summary);
-                id(item_dues).push_back(due);
-                id(item_descriptions).push_back(description);
+                std::string entry_due = (second_separator != std::string::npos)
+                    ? ((third_separator != std::string::npos)
+                          ? line.substr(second_separator + 1, third_separator - second_separator - 1)
+                          : line.substr(second_separator + 1))
+                    : "";
+                std::string entry_description = (third_separator != std::string::npos)
+                    ? line.substr(third_separator + 1) : "";
+
+                id(item_uids).push_back(entry_uid);
+                id(item_summaries).push_back(entry_summary);
+                id(item_dues).push_back(entry_due);
+                id(item_descriptions).push_back(entry_description);
               }
-              if (pos == std::string::npos) break;
-              start = pos + 1;
+              if (line_end == std::string::npos) break;
+              line_start = line_end + 1;
             }
- 
-            // Auswahl im gültigen Bereich halten (z.B. nach Abhaken/Änderung der Liste)
-            int cnt = (int) id(item_uids).size();
-            if (cnt == 0) {
+
+            // --- Nach Fälligkeitsdatum sortieren, älteste zuerst (ohne Datum ans Ende) ---
+            // Insertion-Sort: stabil, braucht keine zusätzlichen Includes.
+            // Alle vier Listen werden gemeinsam verschoben, damit Beschreibung und UID
+            // immer zum richtigen Eintrag gehören.
+            const int entry_total = (int) id(item_uids).size();
+            for (int outer_index = 1; outer_index < entry_total; outer_index++) {
+              std::string current_uid = id(item_uids)[outer_index];
+              std::string current_summary = id(item_summaries)[outer_index];
+              std::string current_due = id(item_dues)[outer_index];
+              std::string current_description = id(item_descriptions)[outer_index];
+              std::string current_sort_key = current_due.empty() ? "9999-99-99" : current_due;
+
+              int compare_index = outer_index - 1;
+              while (compare_index >= 0) {
+                std::string compare_sort_key = id(item_dues)[compare_index].empty()
+                                                   ? "9999-99-99" : id(item_dues)[compare_index];
+                if (compare_sort_key <= current_sort_key) break;
+                id(item_uids)[compare_index + 1]         = id(item_uids)[compare_index];
+                id(item_summaries)[compare_index + 1]    = id(item_summaries)[compare_index];
+                id(item_dues)[compare_index + 1]         = id(item_dues)[compare_index];
+                id(item_descriptions)[compare_index + 1] = id(item_descriptions)[compare_index];
+                compare_index--;
+              }
+              id(item_uids)[compare_index + 1]         = current_uid;
+              id(item_summaries)[compare_index + 1]    = current_summary;
+              id(item_dues)[compare_index + 1]         = current_due;
+              id(item_descriptions)[compare_index + 1] = current_description;
+            }
+
+            // --- Auswahl im gültigen Bereich halten (z.B. nach Abhaken/Änderung der Liste) ---
+            if (entry_total == 0) {
               id(selected_index) = 0;
-            } else if (id(selected_index) >= cnt) {
-              id(selected_index) = cnt - 1;
+            } else if (id(selected_index) >= entry_total) {
+              id(selected_index) = entry_total - 1;
             }
         - delay: 1s
         - component.update: eink_display
@@ -761,227 +795,229 @@ display:
       //it.print(20, 20, id(font_title), BLACK, "Hello World!");
       //it.rectangle(0, 0, it.get_width() - 1, it.get_height() - 1);
       
-      ///------------------------
-      // Confirmation Popup
-      /// -------------------------
-       if (id(confirmation_active)) {
-         it.fill(WHITE);
-         int cx = 40, cy = it.get_height() / 2;
-
-         int fw = 0, fx = 0, fb = 0, fh = 0;
-         id(font_title)->measure("Test", &fw, &fx, &fb, &fh);   // Zeilenhöhe der Schrift
-         
-         // Haken aus zwei Linien: kurzer Strich runter-rechts, langer Strich rauf-rechts
-         it.line(cx,      cy + 10, cx + 12, cy + 22, BLACK);
-         it.line(cx + 12, cy + 22, cx + 34, cy - 14, BLACK);
-         
-         // Zwei Zeilen untereinander, vertikal um cy zentriert
-         it.print(cx + 50, cy - fh, id(font_title), BLACK, id(confirmation_text).c_str());
-         it.print(cx + 50, cy,      id(font_title), BLACK, "entnommen");
-         
-         return;
-       }
-      
       // -----------------------------
-      // Header
+      // Confirmation Popup
+      // -----------------------------
+      if (id(confirmation_active)) {
+        it.fill(WHITE);
+        int popup_x = 40;
+        int popup_y = it.get_height() / 2;
+
+        int popup_font_width = 0, popup_font_x_offset = 0, popup_font_baseline = 0, popup_font_height = 0;
+        id(font_title)->measure("Test", &popup_font_width, &popup_font_x_offset, &popup_font_baseline, &popup_font_height);
+
+        // Haken aus zwei Linien: kurzer Strich runter-rechts, langer Strich rauf-rechts
+        it.line(popup_x,      popup_y + 10, popup_x + 12, popup_y + 22, BLACK);
+        it.line(popup_x + 12, popup_y + 22, popup_x + 34, popup_y - 14, BLACK);
+
+        // Zwei Zeilen untereinander, vertikal um popup_y zentriert
+        it.print(popup_x + 50, popup_y - popup_font_height, id(font_title), BLACK, id(confirmation_text).c_str());
+        it.print(popup_x + 50, popup_y, id(font_title), BLACK, "entnommen");
+        return;
+      }
+
+      // -----------------------------
+      // TITLE
       // -----------------------------
       it.print(0, 0, id(font_title), BLACK, "${display_title}");
-      
-      it.line(3, 40, it.get_width(), 40,BLACK);
+      it.line(3, 40, it.get_width(), 40, BLACK);
 
-       // -----------------------------
-       // WiFi-Icon oben rechts
-       // -----------------------------
-       bool wifi_ok = id(wifi_comp).is_connected();
-       int wifi_rssi = wifi_ok ? (int) id(wifi_signal_sensor).state : -100;
-       init_sequence_id: 
-       int bars = 0;
-       if (wifi_rssi > -55) bars = 4;
-       else if (wifi_rssi > -65) bars = 3;
-       else if (wifi_rssi > -75) bars = 2;
-       else if (wifi_rssi > -85) bars = 1;
-    
-       int bar_w = 8, bar_gap = 3, bar_x0 = it.get_width() - 4 * (bar_w + bar_gap) - 10;
-       int base_y = 32;
-    
-       if (!wifi_ok) {
-         // Kein WLAN Kreuz statt Balken
-         it.line(bar_x0, base_y - 20, bar_x0 + 24, base_y, BLACK);
-         it.line(bar_x0, base_y, bar_x0 + 24, base_y - 20, BLACK);
-       } else {
-         for (int b = 0; b < 4; b++) {
-           int h = 6 + b * 5;              // steigende Balkenhöhe
-           int x = bar_x0 + b * (bar_w + bar_gap);
-           if (b < bars) {
-             it.filled_rectangle(x, base_y - h, bar_w, h, BLACK);
-           } else {
-             it.rectangle(x, base_y - h, bar_w, h, BLACK);   // nur Umriss = "leerer" Balken
-           }
-         }
-       }
- 
+      // -----------------------------
+      // WiFi-Icon oben rechts
+      // -----------------------------
+      bool wifi_connected = id(wifi_comp).is_connected();
+      int wifi_rssi = -100;
+      if (wifi_connected && !std::isnan(id(wifi_signal_sensor).state)) {
+        wifi_rssi = (int) id(wifi_signal_sensor).state;
+      }
+      int wifi_bars = 0;
+      if (wifi_rssi > -55) wifi_bars = 4;
+      else if (wifi_rssi > -65) wifi_bars = 3;
+      else if (wifi_rssi > -75) wifi_bars = 2;
+      else if (wifi_rssi > -85) wifi_bars = 1;
+
+      int bar_width = 8;
+      int bar_gap = 3;
+      int bar_origin_x = it.get_width() - 4 * (bar_width + bar_gap) - 10;
+      int bar_baseline_y = 32;
+
+      if (!wifi_connected) {
+        // Kein WLAN: Kreuz statt Balken
+        it.line(bar_origin_x, bar_baseline_y - 20, bar_origin_x + 24, bar_baseline_y, BLACK);
+        it.line(bar_origin_x, bar_baseline_y, bar_origin_x + 24, bar_baseline_y - 20, BLACK);
+      } else {
+        for (int bar_index = 0; bar_index < 4; bar_index++) {
+          int bar_height = 6 + bar_index * 5;   // steigende Balkenhöhe
+          int bar_x = bar_origin_x + bar_index * (bar_width + bar_gap);
+          if (bar_index < wifi_bars) {
+            it.filled_rectangle(bar_x, bar_baseline_y - bar_height, bar_width, bar_height, BLACK);
+          } else {
+            it.rectangle(bar_x, bar_baseline_y - bar_height, bar_width, bar_height, BLACK);   // nur Umriss = "leerer" Balken
+          }
+        }
+      }
+
       // -----------------------------
       // SD-Karten-Status-Icon
       // -----------------------------
-      
-      int sd_x = it.get_width() - 4 * (bar_w + bar_gap) - 50, sd_y = 5;
-      int icon_w = 0, icon_x_off = 0, icon_baseline = 0, icon_h = 0;
-      id(font_icons)->measure("\U000F07DC", &icon_w, &icon_x_off, &icon_baseline, &icon_h);
+      int sd_icon_x = it.get_width() - 4 * (bar_width + bar_gap) - 50;
+      int sd_icon_y = 5;
+      int icon_width = 0, icon_x_offset = 0, icon_baseline = 0, icon_height = 0;
+      id(font_icons)->measure("\U000F07DC", &icon_width, &icon_x_offset, &icon_baseline, &icon_height);
 
-      bool sd_ok = !id(display_sd).is_failed();
-      
-      if (sd_ok) {
-        it.print(sd_x, sd_y, id(font_icons), BLACK, "\U000F07DC");
+      bool sd_card_ok = !id(display_sd).is_failed();
+      if (sd_card_ok) {
+        it.print(sd_icon_x, sd_icon_y, id(font_icons), BLACK, "\U000F07DC");
       } else {
-        // Invertiert statt durchgestrichen: schwarzer Kasten + weißes Icon, gut erkennbar
-        it.filled_rectangle(sd_x - 2, sd_y - 2, icon_w + 4, icon_h + 4, BLACK);
-        it.print(sd_x, sd_y, id(font_icons), WHITE, "\U000F07DC");
+        // Invertiert: schwarzer Kasten + weißes Icon, gut erkennbar
+        it.filled_rectangle(sd_icon_x - 2, sd_icon_y - 2, icon_width + 4, icon_height + 4, BLACK);
+        it.print(sd_icon_x, sd_icon_y, id(font_icons), WHITE, "\U000F07DC");
       }
-      /*
-      it.print(sd_x, sd_y, id(font_icons), BLACK, "\U000F07DC");
-      
-      if (id(display_sd).is_failed()) {
-      // Kreuz über das Icon zeichnen, wenn keine SD erkannt/Mount fehlgeschlagen
-      it.line(sd_x,      sd_y,      sd_x + 24, sd_y + 24, BLACK);
-      it.line(sd_x,      sd_y + 24, sd_x + 24, sd_y,      BLACK);
-      }
-      */
 
       // -----------------------------
       // Batterie-Anzeige (links neben dem SD-Icon)
       // -----------------------------
       {
-        float bv = id(battery_voltage).state;
-        if (bv > 100.0f) bv /= 1000.0f;            // falls die Komponente mV liefert
-        float bl = id(battery_level).state;
-        bool charging = id(battery_charging).state;
-      
-        const char *bat_icon;
-        bool show_pct = false;
-      
-        if (std::isnan(bv)) {
-          bat_icon = "\U000F0091";                 // noch kein Messwert
-        } else if (bv < 2.5f) {
-          bat_icon = "\U000F125D";                 // kein Akku erkannt
+        float voltage_volts = id(battery_voltage).state;
+        if (voltage_volts > 100.0f) voltage_volts /= 1000.0f;   // falls die Komponente mV liefert
+        float level_percent = id(battery_level).state;
+        bool is_charging = id(battery_charging).state;
+
+        const char *battery_icon;
+        bool show_percentage = false;
+
+        if (std::isnan(voltage_volts)) {
+          battery_icon = "\U000F0091";                 // noch kein Messwert
+        } else if (voltage_volts < 2.5f) {
+          battery_icon = "\U000F125D";                 // kein Akku erkannt
         } else {
-          static const char *const bat_normal[11] = {
+          static const char *const icons_discharging[11] = {
             "\U000F0083", "\U000F007A", "\U000F007B", "\U000F007C", "\U000F007D", "\U000F007E",
             "\U000F007F", "\U000F0080", "\U000F0081", "\U000F0082", "\U000F0079"};
-          static const char *const bat_charge[11] = {
+          static const char *const icons_charging[11] = {
             "\U000F089F", "\U000F089C", "\U000F0086", "\U000F0087", "\U000F0088", "\U000F089D",
             "\U000F0089", "\U000F089E", "\U000F008A", "\U000F008B", "\U000F0085"};
-          int idx = std::isnan(bl) ? 0 : (int) ((bl + 5.0f) / 10.0f);   // 0..10
-          if (idx < 0) idx = 0;
-          if (idx > 10) idx = 10;
-          bat_icon = charging ? bat_charge[idx] : bat_normal[idx];
-          show_pct = !std::isnan(bl);
+          int icon_index = std::isnan(level_percent) ? 0 : (int) ((level_percent + 5.0f) / 10.0f);   // 0..10
+          if (icon_index < 0) icon_index = 0;
+          if (icon_index > 10) icon_index = 10;
+          battery_icon = is_charging ? icons_charging[icon_index] : icons_discharging[icon_index];
+          show_percentage = !std::isnan(level_percent);
         }
-      
-        int bat_x = sd_x - 40;
-        it.print(bat_x, 5, id(font_icons), BLACK, bat_icon);
-        if (show_pct) {
-          it.printf(bat_x - 4, 10, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "%.0f%%", bl);
+
+        int battery_icon_x = sd_icon_x - 40;
+        it.print(battery_icon_x, 5, id(font_icons), BLACK, battery_icon);
+        if (show_percentage) {
+          it.printf(battery_icon_x - 4, 10, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "%.0f%%", level_percent);
         }
       }
-      
+
       // -----------------------------
-      // Tabellen-Überschrift
+      // Tabellen-Überschrift (HEADER)
       // -----------------------------
       it.print(4, 44, id(date), BLACK, "Essen");
       it.print(it.get_width() - 60, 44, id(date), BLACK, "Seit");
       it.line(3, 68, it.get_width(), 68, BLACK);
 
       // -----------------------------
-      // Todo-Liste
+      // Todo-Liste mit Scroll-Fenster
+      // (die Liste ist bereits sortiert, siehe on_value des Text-Sensors)
       // -----------------------------
-      std::string items = id(ha_todo_list).state;
-      
-      int y = 74;
-      int item_count = 0;
-      int item_font_width = 0;
-      int item_font_x_offset = 0;
-      int item_font_baseline = 0;
-      int item_font_height = 0;
+      int item_font_width = 0, item_font_x_offset = 0, item_font_baseline = 0, item_font_height = 0;
       id(font_item)->measure("Test", &item_font_width, &item_font_x_offset, &item_font_baseline, &item_font_height);
-      size_t start = 0;
 
       int desc_font_width = 0, desc_font_x_offset = 0, desc_font_baseline = 0, desc_font_height = 0;
       id(font_desc)->measure("Test", &desc_font_width, &desc_font_x_offset, &desc_font_baseline, &desc_font_height);
 
-      
-      // -----------------------------
-      // Nach Fälligkeitsdatum sortieren, älteste zuerst
-      // (Items ohne Datum ans Ende) — einfacher Insertion-Sort,
-      // stabil, keine zusätzlichen Includes nötig
-      // -----------------------------
-      {
-        int cnt2 = (int) id(item_uids).size();
-        for (int i = 1; i < cnt2; i++) {
-          std::string key_uid = id(item_uids)[i];
-          std::string key_sum = id(item_summaries)[i];
-          std::string key_due = id(item_dues)[i];
-          std::string key_sort = key_due.empty() ? "9999-99-99" : key_due;
-    
-          int j = i - 1;
-          while (j >= 0) {
-            std::string cur_due = id(item_dues)[j].empty() ? "9999-99-99" : id(item_dues)[j];
-            if (cur_due <= key_sort) break;
-            id(item_uids)[j + 1]      = id(item_uids)[j];
-            id(item_summaries)[j + 1] = id(item_summaries)[j];
-            id(item_dues)[j + 1]      = id(item_dues)[j];
-            j--;
+      int list_top = 74;
+      int footer_y = it.get_height() - desc_font_height - 10;
+      int list_bottom = footer_y - 4;               // Liste endet kurz über der Footer-Linie
+
+      const int entry_count = (int) id(item_summaries).size();
+
+      // Zeilenhöhe eines Eintrags: Titelzeile plus optional Beschreibungszeile
+      auto row_height_of = [&](int entry_index) {
+        int height_value = item_font_height;
+        if (!id(item_descriptions)[entry_index].empty()) height_value += desc_font_height;
+        return height_value;
+      };
+
+      // Auswahl im gültigen Bereich halten
+      int selected_entry = id(selected_index);
+      if (selected_entry >= entry_count) selected_entry = entry_count - 1;
+      if (selected_entry < 0) selected_entry = 0;
+
+      // Erster sichtbarer Eintrag, sodass die Auswahl immer im Bild bleibt
+      int first_visible = 0;
+      if (entry_count > 0) {
+        int used_height = 0;
+        for (int entry_index = 0; entry_index <= selected_entry; entry_index++) {
+          used_height += row_height_of(entry_index);
+        }
+        while (first_visible < selected_entry && used_height > (list_bottom - list_top)) {
+          used_height -= row_height_of(first_visible);
+          first_visible++;
+        }
+      }
+
+      int row_y = list_top;
+      int last_visible = first_visible - 1;
+
+      if (entry_count == 0) {
+        it.print(0, list_top, id(font_item), BLACK, "Keine Reste");
+      }
+
+      for (int entry_index = first_visible; entry_index < entry_count; entry_index++) {
+        int row_height = row_height_of(entry_index);
+        if (row_y + row_height > list_bottom) break;   // nichts zeichnen, was nicht mehr passt
+
+        bool is_selected = (entry_index == selected_entry);
+        Color text_color = is_selected ? WHITE : BLACK;
+
+        std::string description = id(item_descriptions)[entry_index];
+        bool has_description = !description.empty();
+        if (description.length() > 35) {
+          // an einer UTF-8-Zeichengrenze kürzen, damit Umlaute nicht zerschnitten werden
+          size_t cut_position = 32;
+          while (cut_position > 0 && (static_cast<unsigned char>(description[cut_position]) & 0xC0) == 0x80) {
+            cut_position--;
           }
-          id(item_uids)[j + 1]      = key_uid;
-          id(item_summaries)[j + 1] = key_sum;
-          id(item_dues)[j + 1]      = key_due;
+          description = description.substr(0, cut_position) + "...";
         }
-      }
-      
-      int cnt = (int) id(item_summaries).size();
- 
-      if (cnt == 0) {
-        it.print(0, y, id(font_item), BLACK, "Keine Reste");
-      }
- 
-      for (int index = 0; index < cnt; index++) {
-        bool selected = (index == id(selected_index));
-      
-        std::string desc = id(item_descriptions)[index];
-        bool has_desc = !desc.empty();
-        if (desc.length() > 35) {
-          desc = desc.substr(0, 32) + "...";   // max. 35 Zeichen inkl. "..."
+
+        if (is_selected) {
+          it.filled_rectangle(0, row_y - 2, it.get_width(), row_height, BLACK);
         }
-      
-        int row_height = item_font_height + (has_desc ? desc_font_height : 0);
-      
-        if (selected) {
-          it.filled_rectangle(0, y - 2, it.get_width(), row_height, BLACK);
-          it.print(4, y, id(font_item), WHITE, id(item_summaries)[index].c_str());
-        } else {
-          it.print(4, y, id(font_item), BLACK, id(item_summaries)[index].c_str());
+        it.print(4, row_y, id(font_item), text_color, id(item_summaries)[entry_index].c_str());
+
+        std::string due_text = id(item_dues)[entry_index];
+        if (due_text.length() >= 10) {
+          std::string due_label = due_text.substr(8, 2) + "." + due_text.substr(5, 2) + ".";
+          it.print(it.get_width() - 60, row_y, id(font_item), text_color, due_label.c_str());
         }
-      
-        std::string due = id(item_dues)[index];
-        if (due.length() >= 10) {
-          std::string date = due.substr(8, 2) + "." + due.substr(5, 2) + ".";
-          it.print(it.get_width() - 60, y, id(font_item), selected ? WHITE : BLACK, date.c_str());
+
+        if (has_description) {
+          it.print(20, row_y + item_font_height, id(font_desc), text_color, description.c_str());
         }
-      
-        if (has_desc) {
-          it.print(20, y + item_font_height, id(font_desc), selected ? WHITE : BLACK, desc.c_str());
-        }
-      
-        y += row_height;
+
+        row_y += row_height;
+        last_visible = entry_index;
       }
 
       // -----------------------------
-      // Footer: Trennlinie, links Firmware-Version, rechts Temperatur
+      // Footer: Trennlinie, links Firmware-Version, Mitte Position, rechts Temperatur
       // -----------------------------
-      int footer_y = it.get_height() - desc_font_height - 10;   // desc_font_height ist weiter oben schon gemessen
       it.line(3, footer_y, it.get_width(), footer_y, BLACK);
-      
+
+      // ------ Firmware version ------
       it.print(4, footer_y + 4, id(font_desc), BLACK, "${firmware_version}");
-      
+
+      // ------ Position in der Liste (nur wenn nicht alles auf das Display passt) ------
+      if (first_visible > 0 || last_visible < entry_count - 1) {
+        it.printf(it.get_width() / 2, footer_y + 4, id(font_desc), BLACK,
+                  TextAlign::TOP_CENTER, "%d/%d", selected_entry + 1, entry_count);
+      }
+
+      // ------ Ambient Temperature ------
       float temperature = id(ambient_temp).state;
       if (std::isnan(temperature)) {
         it.print(it.get_width() - 4, footer_y + 4, id(font_desc), BLACK, TextAlign::TOP_RIGHT, "--,- °C");
