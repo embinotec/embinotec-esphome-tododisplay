@@ -56,7 +56,17 @@ Display will be deliverted preconfigured. Scan your wifi area for a device calle
 
 ## Usage
 
-The usual flow:  
+### Wake up the device
+
+To save power the device is in deepsleep for 13 minutes and wakes for 2 minutes to start wifi and pulls updates of the list.
+To wake the device during deep sleep you could use the jog dial buttons as well as user button to wake the device from deep sleep. Please be patined and give the device some seconds to stare wake up routine, start wifi and update the dispaly. After display refreshes, you could use the devices in normal operation.
+
+### Reset the device
+
+Different from other esp devices the reset button is not directly connected to the reset pin of the esp. You will push and hold the reset button for at least 10 seconds to force a reset.
+
+### The usual flow:  
+
 1. Place the box in fridge.
 2. Enter item and description in HomeAssistant todo list.
 3. When box is removed from fridge, use jog dial [B] to navigate to item index of the box.
