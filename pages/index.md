@@ -2,7 +2,7 @@
 layout: default
 ---
 
-![embinotec tododisplay](assets/todo_display-callouts.jpg){: width="600" style="display:block;margin:0 auto;max-width:100%;height:auto" }
+![embinotec tododisplay](assets/images/todo_display-callouts.jpg){: width="600" style="display:block;margin:0 auto;max-width:100%;height:auto" }
 
 ## Deine Liste jeder Zeit verfügbar
 

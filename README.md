@@ -13,11 +13,11 @@ Eink Display zur Anzeige von ToDo-Listen aus HomeAssistant.
 ## Hardware
 
 **Hardware could be purchased at [embinotec.de](https://www.embinotec.de/produktseite/todo-display).**  
-<!-- ![TodoDisplay](./assets/todo_display.jpeg "Display on fridge") -->
+<!-- ![TodoDisplay](./assets/images/todo_display.jpeg "Display on fridge") -->
 
 ### Overview
 
-![CallOuts](./assets/todo_display-callouts.png "Overview")
+![CallOuts](./assets/images/todo_display-callouts.png "Overview")
 
 - [A] Display
 - [B] Jog dial | up, down, push
