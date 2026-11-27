@@ -4,6 +4,7 @@
 [![Made for ESPHome](https://img.shields.io/badge/Made%20for-ESPHome-blue?logo=esphome)](https://esphome.io/guides/made_for_esphome/)
 [![ESPHome Version](https://img.shields.io/badge/ESPHome-%E2%89%A52026.8.0-green)](https://esphome.io/changelog/)
 [![License](https://img.shields.io/github/license/embinotec/embinotec-esphome-tododisplay)](LICENSE)
+[![GitHub Pages](https://img.shields.io/website?url=https%3A%2F%2Fembinotec.github.io%2Fembinotec-esphome-tododisplay%2F&label=GitHub%20Pages&up_message=online&down_message=offline)](https://embinotec.github.io/embinotec-esphome-tododisplay/)
 
 ![Made for ESPHome](https://esphome.io/images/made-for-esphome-black-on-white.svg)
 
@@ -13,11 +14,11 @@ Eink Display zur Anzeige von ToDo-Listen aus HomeAssistant.
 ## Hardware
 
 **Hardware could be purchased at [embinotec.de](https://www.embinotec.de/produktseite/todo-display).**  
-<!-- ![TodoDisplay](./assets/todo_display.jpeg "Display on fridge") -->
+<!-- ![TodoDisplay](./assets/images/todo_display.jpeg "Display on fridge") -->
 
 ### Overview
 
-![CallOuts](./assets/todo_display-callouts.png "Overview")
+![CallOuts](./assets/images/todo_display-callouts.png "Overview")
 
 - [A] Display
 - [B] Jog dial | up, down, push
